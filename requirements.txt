@@ -1,0 +1,7 @@
+jax==0.4.26
+jaxlib==0.4.26
+flax
+optax
+numpy
+tqdm
+jax-metal==0.1.0
