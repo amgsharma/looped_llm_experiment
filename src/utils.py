@@ -35,17 +35,41 @@ def create_reversal_batch(batch_size, min_len, max_len, vocab_size):
     x_batch = np.zeros((batch_size, max_len), dtype=np.int32)
     y_batch = np.zeros((batch_size, max_len), dtype=np.int32)
     
+    # Vectorized implementation for efficiency
+    
+    # 1. Generate random lengths for each batch item
+    lengths = np.random.randint(min_len, max_len + 1, size=batch_size)
+    
+    # 2. Create a mask for valid positions: (batch, max_len)
+    # indices: (1, max_len) -> [0, 1, ..., max_len-1]
+    # mask: (batch, max_len) where indices < lengths
+    indices = np.arange(max_len)[None, :]
+    mask = indices < lengths[:, None]
+    
+    # 3. Generate random sequence data for the whole block
+    # We generate values in [1, vocab_size) to reserve 0 for padding
+    full_random = np.random.randint(1, vocab_size, size=(batch_size, max_len)).astype(np.int32)
+    
+    # Apply mask to zero out padding
+    x_batch = full_random * mask
+    
+    # 4. Create y_batch (reversed sequences)
+    # Since lengths vary, we can't just flip the whole matrix.
+    # However, for a reversal task x=[a, b, c, 0, 0], y=[c, b, a, 0, 0]
+    # We can perform this by reversing the relevant parts row-wise.
+    # A fully vectorized variable-length reverse is tricky in pure numpy without advanced indexing.
+    # Given the constraints, a compiled JAX/NumPy approach or a optimized loop is best.
+    # Let's stick to a loop for the *reposal* part if it's too complex, OR:
+    # We can generate y first in aligned form and then pad? No.
+    
+    # Let's use a loop for now but optimized:
+    # The generation of random numbers (expensive part) is vectorized.
+    # The assignment is fast.
+    
+    y_batch = np.zeros_like(x_batch)
     for i in range(batch_size):
-        length = np.random.randint(min_len, max_len + 1)
-        # generate random sequence of length 'length'
-        # values in [1, vocab_size-1] to reserve 0 for padding
-        seq = np.random.randint(1, vocab_size, size=(length,))
-        
-        # input: seq followed by 0s
-        x_batch[i, :length] = seq
-        
-        # output: reversed seq followed by 0s
-        y_batch[i, :length] = seq[::-1]
+        l = lengths[i]
+        y_batch[i, :l] = x_batch[i, :l][::-1]
         
     return {
         'x': jnp.array(x_batch),

@@ -74,7 +74,8 @@ class StandardTransformer(BaseTransformer):
     num_layers: int = 2
 
     @nn.compact
-    def __call__(self, x):
+    def __call__(self, x, num_iterations=None):
+        # We ignore num_iterations for StandardTransformer
         x = self.add_positional_encoding(x)
         
         # Independent blocks
